@@ -57,6 +57,9 @@ export class Graph3DView extends ItemView {
 	// Keyboard controls state
 	private pressedKeys = new Set<string>();
 
+	private collapsedFolders = new Set<string>();
+	private readonly ROOT_FOLDER_ID = 'folder:/';
+
 	constructor(leaf: WorkspaceLeaf, plugin: Graph3DPlugin) {
 		super(leaf);
 		this.plugin = plugin;
@@ -66,6 +69,7 @@ export class Graph3DView extends ItemView {
 	getViewType() { return VIEW_TYPE_3D_GRAPH; }
 	getDisplayText() { return "3d graph"; }
 
+	// 视图打开时的初始化
 	async onOpen() {
 		const rootContainer = this.contentEl;
 		rootContainer.empty();
@@ -92,6 +96,7 @@ export class Graph3DView extends ItemView {
 		this.registerDomEvent(this.graphContainer, 'keyup', this.handleKeyUp.bind(this));
 	}
 
+	// 视图关闭时的清理
 	private addLocalControls() {
 		const controlsContainer = this.contentEl.createEl('div', { cls: 'graph-3d-controls-container' });
 		this.settingsToggleButton = controlsContainer.createEl('div', { cls: 'graph-3d-settings-toggle' });
@@ -104,6 +109,7 @@ export class Graph3DView extends ItemView {
 		this.renderSettingsPanel();
 	}
 
+	// 渲染设置面板
 	public renderSettingsPanel() {
 		this.settingsPanel.empty();
 		this.renderSearchSettings(this.settingsPanel);
@@ -115,11 +121,12 @@ export class Graph3DView extends ItemView {
 		this.renderInteractionSettings(this.settingsPanel);
 		this.renderForceSettings(this.settingsPanel);
 	}
-
+	// 检查设置面板是否打开
 	public isSettingsPanelOpen(): boolean {
 		return this.settingsPanel?.classList.contains('is-open');
 	}
 
+	// 搜索设置
 	private renderSearchSettings(container: HTMLElement) {
 		new Setting(container).setHeading().setName('Search');
 		new Setting(container)
@@ -133,6 +140,7 @@ export class Graph3DView extends ItemView {
 				}, 500, true)));
 	}
 
+	// 高级筛选器设置
 	private renderAdvancedFilters(container: HTMLElement) {
 		new Setting(container).setHeading().setName('Advanced Filters');
 
@@ -184,6 +192,7 @@ export class Graph3DView extends ItemView {
 				}));
 	}
 
+	// 筛选器设置
 	private renderFilterSettings(container: HTMLElement) {
 		new Setting(container).setHeading().setName('General Filters');
 
@@ -199,6 +208,14 @@ export class Graph3DView extends ItemView {
 			.setValue(this.settings.showAttachments)
 			.onChange(async (value) => {
 				this.settings.showAttachments = value;
+				await this.plugin.saveSettings();
+				this.updateData({ useCache: true, reheat: false });
+			}));
+
+		new Setting(container).setName('Show folders').addToggle(toggle => toggle
+			.setValue(this.settings.showFolders)
+			.onChange(async (value) => {
+				this.settings.showFolders = value;
 				await this.plugin.saveSettings();
 				this.updateData({ useCache: true, reheat: false });
 			}));
@@ -272,6 +289,8 @@ export class Graph3DView extends ItemView {
 			.onChange(async (v) => { this.settings.tagNodeSize = v; await updateDisplayAndColors(); }));
 		new Setting(container).setName('Attachment node size').addSlider(s => s.setLimits(0.1, 5, 0.1).setValue(this.settings.attachmentNodeSize).setDynamicTooltip()
 			.onChange(async (v) => { this.settings.attachmentNodeSize = v; await updateDisplayAndColors(); }));
+		new Setting(container).setName('Folder node size').addSlider(s => s.setLimits(0.1, 5, 0.1).setValue(this.settings.folderNodeSize).setDynamicTooltip()
+			.onChange(async (v) => { this.settings.folderNodeSize = v; await updateDisplayAndColors(); }));
 		new Setting(container).setName('Link thickness').addSlider(s => s.setLimits(0.1, 5, 0.1).setValue(this.settings.linkThickness).setDynamicTooltip()
 			.onChange(async (v) => { this.settings.linkThickness = v; await updateDisplayAndColors(); }));
 
@@ -281,6 +300,8 @@ export class Graph3DView extends ItemView {
 			.onChange(async(value: NodeShape) => {this.settings.tagShape = value; await updateDisplayAndColors()}));
 		new Setting(container).setName('Attachment shape').addDropdown(dd => dd.addOptions(NodeShape).setValue(this.settings.attachmentShape)
 			.onChange(async(value: NodeShape) => {this.settings.attachmentShape = value; await updateDisplayAndColors()}));
+		new Setting(container).setName('Folder shape').addDropdown(dd => dd.addOptions(NodeShape).setValue(this.settings.folderShape)
+			.onChange(async(value: NodeShape) => {this.settings.folderShape = value; await updateDisplayAndColors()}));
 	}
 
 	private renderLabelSettings(container: HTMLElement) {
@@ -465,6 +486,7 @@ export class Graph3DView extends ItemView {
 		}
 	}
 
+	// 初始化图表
 	initializeGraph() {
 		this.app.workspace.onLayoutReady(async () => {
 			if (!this.graphContainer) return;
@@ -719,10 +741,12 @@ export class Graph3DView extends ItemView {
 		if (useThemeColors) {
 			if (node.type === NodeType.Tag) return this.getCssColor('--graph-tags', colorTag);
 			if (node.type === NodeType.Attachment) return this.getCssColor('--graph-unresolved', colorAttachment);
+			if (node.type === NodeType.Folder) return this.getCssColor('--graph-folder', this.settings.colorFolder);
 			return this.getCssColor('--graph-node', colorNode);
 		} else {
 			if (node.type === NodeType.Tag) return colorTag;
 			if (node.type === NodeType.Attachment) return colorAttachment;
+			if (node.type === NodeType.Folder) return this.settings.colorFolder;
 			return colorNode;
 		}
 	}
@@ -753,6 +777,7 @@ export class Graph3DView extends ItemView {
 		let shape: NodeShape;
 		let size: number;
 		switch (node.type) {
+			case NodeType.Folder: shape = this.settings.folderShape; size = this.settings.folderNodeSize; break;
 			case NodeType.Tag: shape = this.settings.tagShape; size = this.settings.tagNodeSize; break;
 			case NodeType.Attachment: shape = this.settings.attachmentShape; size = this.settings.attachmentNodeSize; break;
 			default: shape = this.settings.nodeShape; size = this.settings.nodeSize;
@@ -934,7 +959,16 @@ export class Graph3DView extends ItemView {
 				}
 			});
 
-			if (node.__threeObj && this.settings.zoomOnClick) {
+			if (node.type === NodeType.Folder && node.id !== this.ROOT_FOLDER_ID) {
+				if (this.collapsedFolders.has(node.id)) {
+					this.collapsedFolders.delete(node.id);
+				} else {
+					this.collapsedFolders.add(node.id);
+				}
+				this.updateData({ useCache: true });
+			}
+
+			if (node.type !== NodeType.Folder && node.__threeObj && this.settings.zoomOnClick) {
 				const distance = 40;
 				const nodePosition = new THREE.Vector3();
 				node.__threeObj.getWorldPosition(nodePosition);
@@ -988,12 +1022,45 @@ export class Graph3DView extends ItemView {
 		return 0;
 	}
 
+	private getFolderAncestors(node: GraphNode): string[] {
+		const folderIds: string[] = [];
+		let path = '';
+
+		if (node.type === NodeType.Folder) {
+			const folderPath = node.id.substring(7);
+			if (!folderPath) return [this.ROOT_FOLDER_ID];
+			const segments = folderPath.split('/');
+			for (let i = 0; i < segments.length - 1; i++) {
+				path = path ? `${path}/${segments[i]}` : segments[i];
+				folderIds.push(`folder:${path}`);
+			}
+			folderIds.push(this.ROOT_FOLDER_ID);
+			return folderIds;
+		}
+
+		if (node.type === NodeType.File || node.type === NodeType.Attachment) {
+			const segments = node.id.split('/');
+			for (let i = 0; i < segments.length - 1; i++) {
+				path = path ? `${path}/${segments[i]}` : segments[i];
+				folderIds.push(`folder:${path}`);
+			}
+			folderIds.push(this.ROOT_FOLDER_ID);
+		}
+
+		return folderIds;
+	}
+
+	private isDescendantOfCollapsedFolder(node: GraphNode): boolean {
+		const ancestors = this.getFolderAncestors(node);
+		return ancestors.some(folderId => this.collapsedFolders.has(folderId));
+	}
+
 	private matchesFilter(node: GraphNode, filter: Filter): boolean {
 		const filterValue = filter.value.trim().toLowerCase();
 		if (!filterValue) return false;
 
 		if (filter.type === 'path') {
-			return node.id.toLowerCase().includes(filterValue);
+			return node.id.toLowerCase().includes(filterValue) || node.name.toLowerCase().includes(filterValue);
 		}
 		if (filter.type === 'tag') {
 			const tagToMatch = filterValue.startsWith('#') ? filterValue.substring(1) : filterValue;
@@ -1003,12 +1070,14 @@ export class Graph3DView extends ItemView {
 	}
 
 	private async processVaultData(): Promise<{ nodes: GraphNode[], links: { source: string, target: string }[] } | null> {
-		const { showAttachments, hideOrphans, showTags, searchQuery, showNeighboringNodes, filters } = this.settings;
+		const { showAttachments, hideOrphans, showTags, showFolders, searchQuery, showNeighboringNodes, filters } = this.settings;
 		const allFiles = this.app.vault.getFiles();
 		const resolvedLinks = this.app.metadataCache.resolvedLinks;
 		if (!resolvedLinks) return null;
 
 		const allNodesMap = new Map<string, GraphNode>();
+		const folderNodesMap = new Map<string, GraphNode>();
+		folderNodesMap.set(this.ROOT_FOLDER_ID, { id: this.ROOT_FOLDER_ID, name: '/', type: NodeType.Folder });
 
 		for (const file of allFiles) {
 			const cache = this.app.metadataCache.getFileCache(file);
@@ -1021,8 +1090,17 @@ export class Graph3DView extends ItemView {
 			}
 
 			allNodesMap.set(file.path, { id: file.path, name: file.basename, filename: file.name, type, tags, content });
-		}
 
+			const segments = file.path.split('/');
+			let folderPath = '';
+			for (let i = 0; i < segments.length - 1; i++) {
+				folderPath = folderPath ? `${folderPath}/${segments[i]}` : segments[i];
+				const folderId = `folder:${folderPath}`;
+				if (!folderNodesMap.has(folderId)) {
+					folderNodesMap.set(folderId, { id: folderId, name: segments[i], type: NodeType.Folder });
+				}
+			}
+		}
 
 		const allLinks: { source: string, target: string }[] = [];
 		for (const sourcePath in resolvedLinks) {
@@ -1030,6 +1108,20 @@ export class Graph3DView extends ItemView {
 				allLinks.push({ source: sourcePath, target: targetPath });
 			}
 		}
+
+		folderNodesMap.forEach((folderNode, folderId) => {
+			if (folderId === this.ROOT_FOLDER_ID) return;
+			const folderPath = folderId.substring(7);
+			const parentPath = folderPath.includes('/') ? folderPath.substring(0, folderPath.lastIndexOf('/')) : '';
+			const parentId = parentPath ? `folder:${parentPath}` : this.ROOT_FOLDER_ID;
+			allLinks.push({ source: parentId, target: folderId });
+		});
+
+		allFiles.forEach(file => {
+			const segments = file.path.split('/');
+			const parentFolderId = segments.length > 1 ? `folder:${segments.slice(0, segments.length - 1).join('/')}` : this.ROOT_FOLDER_ID;
+			allLinks.push({ source: parentFolderId, target: file.path });
+		});
 
 		if (showTags) {
 			const allTags = new Map<string, GraphNode>();
@@ -1044,10 +1136,13 @@ export class Graph3DView extends ItemView {
 					});
 				}
 			});
-			allTags.forEach((tagNode, tagName) => allNodesMap.set(tagNode.id, tagNode));
+			allTags.forEach((tagNode) => allNodesMap.set(tagNode.id, tagNode));
 		}
 
 		let finalNodes = Array.from(allNodesMap.values());
+		if (showFolders) {
+			folderNodesMap.forEach(folderNode => finalNodes.push(folderNode));
+		}
 
 		// Advanced Filtering Logic
 		const positiveFilters = filters.filter(f => !f.inverted && f.value.trim() !== '');
@@ -1088,7 +1183,8 @@ export class Graph3DView extends ItemView {
 		let nodesToShow = finalNodes.filter(node => {
 			if (node.type === NodeType.Tag) return showTags;
 			if (node.type === NodeType.Attachment) return showAttachments;
-			return true;
+			if (node.type === NodeType.Folder) return showFolders;
+			return !this.isDescendantOfCollapsedFolder(node);
 		});
 
 		let nodesToShowIds = new Set(nodesToShow.map(n => n.id));

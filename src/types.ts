@@ -22,6 +22,7 @@ export interface Graph3DPluginSettings {
 	showAttachments: boolean;
 	hideOrphans: boolean;
 	showTags: boolean;
+	showFolders: boolean;
 	// Groups
 	groups: ColorGroup[];
 	// Display
@@ -29,6 +30,7 @@ export interface Graph3DPluginSettings {
 	colorNode: string;
 	colorTag: string;
 	colorAttachment: string;
+	colorFolder: string;
 	colorLink: string;
 	colorHighlight: string;
 	backgroundColor: string;
@@ -36,10 +38,12 @@ export interface Graph3DPluginSettings {
 	nodeSize: number;
 	tagNodeSize: number;
 	attachmentNodeSize: number;
+	folderNodeSize: number;
 	linkThickness: number;
 	nodeShape: NodeShape;
 	tagShape: NodeShape;
 	attachmentShape: NodeShape;
+	folderShape: NodeShape;
 	// Labels
 	showNodeLabels: boolean;
 	labelDistance: number;
@@ -72,6 +76,7 @@ export const DEFAULT_SETTINGS: Graph3DPluginSettings = {
 	showAttachments: false,
 	hideOrphans: false,
 	showTags: false,
+	showFolders: true,
 	// Groups
 	groups: [],
 	// Display
@@ -79,6 +84,7 @@ export const DEFAULT_SETTINGS: Graph3DPluginSettings = {
 	colorNode: '#2080F0',
 	colorTag: '#9A49E8',
 	colorAttachment: '#75B63A',
+	colorFolder: '#F0A040',
 	colorLink: '#666666',
 	colorHighlight: '#FFB800',
 	backgroundColor: '#0E0E10',
@@ -86,10 +92,12 @@ export const DEFAULT_SETTINGS: Graph3DPluginSettings = {
 	nodeSize: 1.5,
 	tagNodeSize: 1.0,
 	attachmentNodeSize: 1.2,
+	folderNodeSize: 1.4,
 	linkThickness: 1,
 	nodeShape: NodeShape.Sphere,
 	tagShape: NodeShape.Tetrahedron,
 	attachmentShape: NodeShape.Cube,
+	folderShape: NodeShape.Cube,
 	// Labels
 	showNodeLabels: true,
 	labelDistance: 150,
@@ -113,7 +121,7 @@ export const DEFAULT_SETTINGS: Graph3DPluginSettings = {
 	linkForce: 0.01,
 };
 
-export enum NodeType { File, Tag, Attachment }
+export enum NodeType { File, Folder, Tag, Attachment }
 
 export interface GraphNode {
 	id: string;
