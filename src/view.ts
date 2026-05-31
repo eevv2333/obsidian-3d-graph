@@ -47,6 +47,7 @@ export class Graph3DView extends ItemView {
 	private linkForce: any;
 
 	private clickTimeout: any = null;
+	private backgroundClickTimeout: any = null;
 	private isGraphInitialized = false;
 	private isUpdating = false;
 	private readonly CLICK_DELAY = 250;
@@ -495,6 +496,19 @@ export class Graph3DView extends ItemView {
 			this.graph = Graph()(this.graphContainer)
 				.onNodeClick((node: GraphNode, event: MouseEvent) => this.handleNodeClick(node, event))
 				.onNodeHover((node: GraphNode | null) => this.handleNodeHover(node))
+				.onBackgroundClick((event: MouseEvent) => {
+					if (this.backgroundClickTimeout) {
+						clearTimeout(this.backgroundClickTimeout);
+						this.backgroundClickTimeout = null;
+						if (this.graph) {
+							this.graph.zoomToFit(1000);
+						}
+					} else {
+						this.backgroundClickTimeout = setTimeout(() => {
+							this.backgroundClickTimeout = null;
+						}, this.CLICK_DELAY);
+					}
+				})
 				.linkCurvature((link: ProcessedGraphLink) => this.getLinkCurvature(link))
 				.onEngineTick(() => {
 					const now = performance.now();
