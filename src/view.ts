@@ -113,14 +113,32 @@ export class Graph3DView extends ItemView {
 	// 渲染设置面板
 	public renderSettingsPanel() {
 		this.settingsPanel.empty();
-		this.renderSearchSettings(this.settingsPanel);
-		this.renderAdvancedFilters(this.settingsPanel);
-		this.renderFilterSettings(this.settingsPanel);
-		this.renderGroupSettings(this.settingsPanel);
-		this.renderAppearanceSettings(this.settingsPanel);
-		this.renderLabelSettings(this.settingsPanel);
-		this.renderInteractionSettings(this.settingsPanel);
-		this.renderForceSettings(this.settingsPanel);
+		this.createSettingsSection('Search', (content) => {
+			this.renderSearchSettings(content);
+			this.renderAdvancedFilters(content);
+			this.renderFilterSettings(content);
+		});
+		this.createSettingsSection('Color Groups', this.renderGroupSettings.bind(this));
+		this.createSettingsSection('Appearance', (content) => {
+			this.renderAppearanceSettings(content);
+			this.renderLabelSettings(content);
+		});
+		this.createSettingsSection('Forces', this.renderForceSettings.bind(this));
+		this.createSettingsSection('Interaction', this.renderInteractionSettings.bind(this));
+	}
+	// 创建可折叠设置区块
+	private createSettingsSection(title: string, renderContent: (container: HTMLElement) => void) {
+		const section = this.settingsPanel.createEl('div', { cls: 'graph-3d-settings-section' });
+		const header = section.createEl('div', { cls: 'graph-3d-settings-section-header' });
+		const toggleIcon = header.createEl('div', { cls: 'graph-3d-settings-section-toggle-icon' });
+		setIcon(toggleIcon, 'chevron-down');
+		header.createEl('div', { cls: 'graph-3d-settings-section-title', text: title });
+		header.addEventListener('click', () => {
+			const collapsed = section.classList.toggle('collapsed');
+			setIcon(toggleIcon, collapsed ? 'chevron-right' : 'chevron-down');
+		});
+		const content = section.createEl('div', { cls: 'graph-3d-settings-section-content' });
+		renderContent(content);
 	}
 	// 检查设置面板是否打开
 	public isSettingsPanelOpen(): boolean {
@@ -129,10 +147,10 @@ export class Graph3DView extends ItemView {
 
 	// 搜索设置
 	private renderSearchSettings(container: HTMLElement) {
-		new Setting(container).setHeading().setName('Search');
 		new Setting(container)
-			.setName('Search term')
+			.setClass('graph-3d-search-setting')
 			.addText(text => text
+				.setPlaceholder('Search notes, tags, paths...')
 				.setValue(this.settings.searchQuery)
 				.onChange(debounce(async (value) => {
 					this.settings.searchQuery = value.trim();
@@ -141,23 +159,23 @@ export class Graph3DView extends ItemView {
 				}, 500, true)));
 	}
 
+
 	// 高级筛选器设置
 	private renderAdvancedFilters(container: HTMLElement) {
-		new Setting(container).setHeading().setName('Advanced Filters');
-
+		
 		this.settings.filters.forEach((filter, index) => {
 			const setting = new Setting(container)
-				.addDropdown(dropdown => dropdown
-					.addOption('path', 'Path')
-					.addOption('tag', 'Tag')
-					.setValue(filter.type)
-					.onChange(async (value: 'path' | 'tag') => {
-						filter.type = value;
-						await this.plugin.saveSettings();
-						this.updateData({ useCache: true });
-					}))
+				// .addDropdown(dropdown => dropdown
+				// 	.addOption('path', 'Path')
+				// 	.addOption('tag', 'Tag')
+				// 	.setValue(filter.type)
+				// 	.onChange(async (value: 'path' | 'tag') => {
+				// 		filter.type = value;
+				// 		await this.plugin.saveSettings();
+				// 		this.updateData({ useCache: true });
+				// 	}))
 				.addText(text => text
-					.setPlaceholder('Enter filter value...')
+					.setPlaceholder('Enter value...')
 					.setValue(filter.value)
 					.onChange(debounce(async (value) => {
 						filter.value = value;
@@ -184,6 +202,7 @@ export class Graph3DView extends ItemView {
 		});
 
 		new Setting(container)
+			.setClass('graph-3d-add-filter-button')
 			.addButton(button => button
 				.setButtonText('Add new filter')
 				.onClick(async () => {
@@ -195,8 +214,6 @@ export class Graph3DView extends ItemView {
 
 	// 筛选器设置
 	private renderFilterSettings(container: HTMLElement) {
-		new Setting(container).setHeading().setName('General Filters');
-
 		new Setting(container).setName('Show tags').addToggle(toggle => toggle
 			.setValue(this.settings.showTags)
 			.onChange(async (value) => {
@@ -234,7 +251,6 @@ export class Graph3DView extends ItemView {
 		const groupContainer = container.createDiv();
 		const render = () => {
 			groupContainer.empty();
-			new Setting(groupContainer).setHeading().setName('Color Groups');
 
 			this.settings.groups.forEach((group, index) => {
 				new Setting(groupContainer)
@@ -277,24 +293,36 @@ export class Graph3DView extends ItemView {
 	}
 
 	private renderAppearanceSettings(container: HTMLElement) {
-		new Setting(container).setHeading().setName('Appearance');
-
 		const updateDisplayAndColors = async () => {
 			await this.plugin.saveSettings();
 			this.updateDisplay();
 		}
 
-		new Setting(container).setName('Node size').addSlider(s => s.setLimits(0.1, 5, 0.1).setValue(this.settings.nodeSize).setDynamicTooltip()
-			.onChange(async (v) => { this.settings.nodeSize = v; await updateDisplayAndColors(); }));
-		new Setting(container).setName('Tag node size').addSlider(s => s.setLimits(0.1, 5, 0.1).setValue(this.settings.tagNodeSize).setDynamicTooltip()
-			.onChange(async (v) => { this.settings.tagNodeSize = v; await updateDisplayAndColors(); }));
-		new Setting(container).setName('Attachment node size').addSlider(s => s.setLimits(0.1, 5, 0.1).setValue(this.settings.attachmentNodeSize).setDynamicTooltip()
-			.onChange(async (v) => { this.settings.attachmentNodeSize = v; await updateDisplayAndColors(); }));
-		new Setting(container).setName('Folder node size').addSlider(s => s.setLimits(0.1, 5, 0.1).setValue(this.settings.folderNodeSize).setDynamicTooltip()
-			.onChange(async (v) => { this.settings.folderNodeSize = v; await updateDisplayAndColors(); }));
-		new Setting(container).setName('Link thickness').addSlider(s => s.setLimits(0.1, 5, 0.1).setValue(this.settings.linkThickness).setDynamicTooltip()
-			.onChange(async (v) => { this.settings.linkThickness = v; await updateDisplayAndColors(); }));
-
+		new Setting(container)
+			.setName('Node size')
+			.setClass('vertical-setting')   // 新增：用于 CSS 选择
+			.addSlider(s => s.setLimits(0.1, 5, 0.1).setValue(this.settings.nodeSize).setDynamicTooltip()
+        	.onChange(async (v) => { this.settings.nodeSize = v; await updateDisplayAndColors(); }));	
+		new Setting(container)
+			.setName('Tag node size')
+			.setClass('vertical-setting')
+			.addSlider(s => s.setLimits(0.1, 5, 0.1).setValue(this.settings.tagNodeSize).setDynamicTooltip()
+				.onChange(async (v) => { this.settings.tagNodeSize = v; await updateDisplayAndColors(); }));
+		new Setting(container)
+			.setName('Attachment node size')
+			.setClass('vertical-setting')
+			.addSlider(s => s.setLimits(0.1, 5, 0.1).setValue(this.settings.attachmentNodeSize).setDynamicTooltip()
+				.onChange(async (v) => { this.settings.attachmentNodeSize = v; await updateDisplayAndColors(); }));
+		new Setting(container)
+			.setName('Folder node size')
+			.setClass('vertical-setting')
+			.addSlider(s => s.setLimits(0.1, 5, 0.1).setValue(this.settings.folderNodeSize).setDynamicTooltip()
+				.onChange(async (v) => { this.settings.folderNodeSize = v; await updateDisplayAndColors(); }));
+		new Setting(container)
+			.setName('Link thickness')
+			.setClass('vertical-setting')
+			.addSlider(s => s.setLimits(0.1, 5, 0.1).setValue(this.settings.linkThickness).setDynamicTooltip()
+				.onChange(async (v) => { this.settings.linkThickness = v; await updateDisplayAndColors(); }));
 		new Setting(container).setName('Node shape').addDropdown(dd => dd.addOptions(NodeShape).setValue(this.settings.nodeShape)
 			.onChange(async(value: NodeShape) => {this.settings.nodeShape = value; await updateDisplayAndColors()}));
 		new Setting(container).setName('Tag shape').addDropdown(dd => dd.addOptions(NodeShape).setValue(this.settings.tagShape)
@@ -310,7 +338,7 @@ export class Graph3DView extends ItemView {
 
 		new Setting(container)
 			.setName('Show node labels')
-			.setDesc('If you enable this, please reopen the graph view to see the labels.')
+			//.setDesc('If you enable this, please reopen the graph view to see the labels.')
 			.addToggle(toggle => toggle.setValue(this.settings.showNodeLabels)
 				.onChange(async (value) => {
 					this.settings.showNodeLabels = value;
@@ -324,7 +352,8 @@ export class Graph3DView extends ItemView {
 
 		new Setting(container)
 			.setName('Label distance')
-			.addSlider(s => s.setLimits(50, 500, 10).setValue(this.settings.labelDistance).setDynamicTooltip()
+			.setClass('vertical-setting')
+			.addSlider(s => s.setLimits(0.1, 5, 0.1).setValue(this.settings.labelDistance).setDynamicTooltip()
 				.onChange(async (v) => {
 					this.settings.labelDistance = v;
 					await this.plugin.saveSettings();
@@ -332,7 +361,7 @@ export class Graph3DView extends ItemView {
 
 		new Setting(container)
 			.setName('Prevent label occlusion')
-			.setDesc('Can impact performance on large graphs.')
+			//.setDesc('Can impact performance on large graphs.')
 			.addToggle(toggle => toggle.setValue(this.settings.labelOcclusion)
 				.onChange(async (value) => {
 					this.settings.labelOcclusion = value;
@@ -341,14 +370,16 @@ export class Graph3DView extends ItemView {
 	}
 
 	private renderInteractionSettings(container: HTMLElement) {
-		new Setting(container).setHeading().setName('Interaction');
 
 		new Setting(container).setName("Use Keyboard Controls (WASD)")
 			.addToggle(toggle => toggle.setValue(this.settings.useKeyboardControls)
 				.onChange(async (value) => { this.settings.useKeyboardControls = value; await this.plugin.saveSettings(); this.updateControls() }));
 
-		new Setting(container).setName('Keyboard move speed').addSlider(s => s.setLimits(0.1, 10, 0.1).setValue(this.settings.keyboardMoveSpeed).setDynamicTooltip()
-			.onChange(async (v) => { this.settings.keyboardMoveSpeed = v; await this.plugin.saveSettings(); }));
+		new Setting(container)
+			.setName('Keyboard move speed')
+			.setClass('vertical-setting')
+			.addSlider(s => s.setLimits(0.1, 10, 0.1).setValue(this.settings.keyboardMoveSpeed).setDynamicTooltip()
+				.onChange(async (v) => { this.settings.keyboardMoveSpeed = v; await this.plugin.saveSettings(); }));
 
 		new Setting(container).setName("Zoom on click")
 			.addToggle(toggle => toggle.setValue(this.settings.zoomOnClick)
@@ -357,30 +388,38 @@ export class Graph3DView extends ItemView {
 					await this.plugin.saveSettings();
 				}));
 
-		new Setting(container).setName('Rotation speed').addSlider(s => s.setLimits(0.1, 5, 0.1).setValue(this.settings.rotateSpeed).setDynamicTooltip()
-			.onChange(async (v) => {
-				this.settings.rotateSpeed = v;
-				await this.plugin.saveSettings();
+		new Setting(container)
+			.setName('Rotation speed')
+			.setClass('vertical-setting')
+			.addSlider(s => s.setLimits(0.1, 5, 0.1).setValue(this.settings.rotateSpeed).setDynamicTooltip()
+				.onChange(async (v) => {
+					this.settings.rotateSpeed = v;
+					await this.plugin.saveSettings();
+					this.updateControls();
+				}));
+
+		new Setting(container)
+			.setName('Pan speed')
+			.setClass('vertical-setting')
+			.addSlider(s => s.setLimits(0.1, 5, 0.1).setValue(this.settings.panSpeed).setDynamicTooltip()
+				.onChange(async (v) => {
+					this.settings.panSpeed = v;
+					await this.plugin.saveSettings();
 				this.updateControls();
 			}));
 
-		new Setting(container).setName('Pan speed').addSlider(s => s.setLimits(0.1, 5, 0.1).setValue(this.settings.panSpeed).setDynamicTooltip()
-			.onChange(async (v) => {
-				this.settings.panSpeed = v;
-				await this.plugin.saveSettings();
-				this.updateControls();
-			}));
-
-		new Setting(container).setName('Zoom speed').addSlider(s => s.setLimits(0.1, 5, 0.1).setValue(this.settings.zoomSpeed).setDynamicTooltip()
-			.onChange(async (v) => {
-				this.settings.zoomSpeed = v;
-				await this.plugin.saveSettings();
-				this.updateControls();
-			}));
+		new Setting(container)
+			.setName('Zoom speed')
+			.setClass('vertical-setting')
+			.addSlider(s => s.setLimits(0.1, 5, 0.1).setValue(this.settings.zoomSpeed).setDynamicTooltip()
+				.onChange(async (v) => {
+					this.settings.zoomSpeed = v;
+					await this.plugin.saveSettings();
+					this.updateControls();
+				}));
 	}
 
 	private renderForceSettings(container: HTMLElement) {
-		new Setting(container).setHeading().setName('Forces');
 
 		const forceChangeHandler = async () => {
 			await this.plugin.saveSettings();
@@ -389,6 +428,7 @@ export class Graph3DView extends ItemView {
 
 		new Setting(container)
 			.setName('Center force')
+			.setClass('vertical-setting')
 			.addSlider(slider => slider
 				.setLimits(0, 1, 0.01)
 				.setValue(this.settings.centerForce)
@@ -400,6 +440,7 @@ export class Graph3DView extends ItemView {
 
 		new Setting(container)
 			.setName('Repel force')
+			.setClass('vertical-setting')
 			.addSlider(slider => slider
 				.setLimits(0, 20, 0.1)
 				.setValue(this.settings.repelForce)
@@ -411,6 +452,7 @@ export class Graph3DView extends ItemView {
 
 		new Setting(container)
 			.setName('Link force')
+			.setClass('vertical-setting')
 			.addSlider(slider => slider
 				.setLimits(0, 0.1, 0.001)
 				.setValue(this.settings.linkForce)
@@ -704,6 +746,39 @@ export class Graph3DView extends ItemView {
 			this.colorCache.set(variable, fallback);
 			return fallback;
 		}
+	}
+
+	private lightenColor(color: string, amount: number): string {
+		const rgb = this.parseColorToRgb(color);
+		if (!rgb) return color;
+
+		const lightenComponent = (value: number) => Math.min(255, Math.round(value + (255 - value) * amount));
+		return `rgb(${lightenComponent(rgb.r)}, ${lightenComponent(rgb.g)}, ${lightenComponent(rgb.b)})`;
+	}
+
+	private parseColorToRgb(color: string): { r: number; g: number; b: number } | null {
+		const trimmed = color.trim();
+		const hexMatch = trimmed.match(/^#([0-9a-f]{3}|[0-9a-f]{6})$/i);
+		if (hexMatch) {
+			const hex = hexMatch[1];
+			const normalized = hex.length === 3 ? hex.split('').map(c => `${c}${c}`).join('') : hex;
+			return {
+				r: parseInt(normalized.slice(0, 2), 16),
+				g: parseInt(normalized.slice(2, 4), 16),
+				b: parseInt(normalized.slice(4, 6), 16),
+			};
+		}
+
+		const rgbMatch = trimmed.match(/^rgb\s*\(\s*(\d{1,3})\s*,\s*(\d{1,3})\s*,\s*(\d{1,3})\s*\)$/i);
+		if (rgbMatch) {
+			return {
+				r: Number(rgbMatch[1]),
+				g: Number(rgbMatch[2]),
+				b: Number(rgbMatch[3]),
+			};
+		}
+
+		return null;
 	}
 
 	private isEmptyFile(node: GraphNode): boolean {
@@ -1073,14 +1148,29 @@ export class Graph3DView extends ItemView {
 		return ancestors.some(folderId => this.collapsedFolders.has(folderId));
 	}
 
+	private parseFilterQuery(filter: Filter): { type: 'path' | 'tag'; value: string } {
+		const raw = filter.value.trim();
+		const lower = raw.toLowerCase();
+
+		if (lower.startsWith('path:')) {
+			return { type: 'path', value: raw.substring(5).trim() };
+		}
+		if (lower.startsWith('tag:')) {
+			return { type: 'tag', value: raw.substring(4).trim() };
+		}
+
+		return { type: filter.type, value: raw };
+	}
+
 	private matchesFilter(node: GraphNode, filter: Filter): boolean {
-		const filterValue = filter.value.trim().toLowerCase();
+		const { type, value } = this.parseFilterQuery(filter);
+		const filterValue = value.toLowerCase();
 		if (!filterValue) return false;
 
-		if (filter.type === 'path') {
+		if (type === 'path') {
 			return node.id.toLowerCase().includes(filterValue) || node.name.toLowerCase().includes(filterValue);
 		}
-		if (filter.type === 'tag') {
+		if (type === 'tag') {
 			const tagToMatch = filterValue.startsWith('#') ? filterValue.substring(1) : filterValue;
 			return node.tags?.some(tag => tag.toLowerCase() === tagToMatch) ?? false;
 		}

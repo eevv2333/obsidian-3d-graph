@@ -47,18 +47,9 @@ export class Graph3DSettingsTab extends PluginSettingTab {
 		containerEl.createEl('p', { text: 'Use the filters below to limit the number of nodes in the graph. Filters are applied in order.', cls: 'setting-item-description' });
 
 		this.plugin.settings.filters.forEach((filter, index) => {
-			const setting = new Setting(containerEl)
-				.addDropdown(dropdown => dropdown
-					.addOption('path', 'Path')
-					.addOption('tag', 'Tag')
-					.setValue(filter.type)
-					.onChange(async (value: 'path' | 'tag') => {
-						filter.type = value;
-						await this.plugin.saveSettings();
-						this.triggerUpdate({ redrawData: true, useCache: true });
-					}))
+			new Setting(containerEl)
 				.addText(text => text
-					.setPlaceholder('Enter filter value...')
+					.setPlaceholder('path:, tag:, or text')
 					.setValue(filter.value)
 					.onChange(debounce(async (value) => {
 						filter.value = value;
