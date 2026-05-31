@@ -706,6 +706,10 @@ export class Graph3DView extends ItemView {
 		}
 	}
 
+	private isEmptyFile(node: GraphNode): boolean {
+		return node.type === NodeType.File && !(node.content?.trim());
+	}
+
 	private getNodeColor(node: GraphNode): string {
 		const { useThemeColors, colorHighlight, colorNode, colorTag, colorAttachment, groups } = this.settings;
 
@@ -728,7 +732,7 @@ export class Graph3DView extends ItemView {
 					return group.color;
 				}
 				if (node.type === NodeType.File && node.tags?.some(tag => tag.toLowerCase() === tagQuery)) {
-					return group.color;
+					return this.isEmptyFile(node) ? this.lightenColor(group.color, 0.3) : group.color;
 				}
 			} else if (query.startsWith('file:')) {
 				const fileQuery = query.substring(5).trim().toLowerCase();
@@ -811,7 +815,7 @@ export class Graph3DView extends ItemView {
 		const material = new THREE.MeshLambertMaterial({
 			color: '#ffffff',
 			transparent: true,
-			opacity: 0.9
+			opacity: this.isEmptyFile(node) ? 0.34 : 0.9
 		});
 
 		try {
