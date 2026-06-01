@@ -124,7 +124,7 @@ export class Graph3DView extends ItemView {
 			this.renderLabelSettings(content);
 		});
 		this.createSettingsSection('Forces', this.renderForceSettings.bind(this));
-		this.createSettingsSection('Interaction', this.renderInteractionSettings.bind(this));
+		//this.createSettingsSection('Interaction', this.renderInteractionSettings.bind(this));
 	}
 	// 创建可折叠设置区块
 	private createSettingsSection(title: string, renderContent: (container: HTMLElement) => void) {
@@ -369,55 +369,55 @@ export class Graph3DView extends ItemView {
 				}));
 	}
 
-	private renderInteractionSettings(container: HTMLElement) {
+	// private renderInteractionSettings(container: HTMLElement) {
 
-		new Setting(container).setName("Use Keyboard Controls (WASD)")
-			.addToggle(toggle => toggle.setValue(this.settings.useKeyboardControls)
-				.onChange(async (value) => { this.settings.useKeyboardControls = value; await this.plugin.saveSettings(); this.updateControls() }));
+	// 	new Setting(container).setName("Use Keyboard Controls (WASD)")
+	// 		.addToggle(toggle => toggle.setValue(this.settings.useKeyboardControls)
+	// 			.onChange(async (value) => { this.settings.useKeyboardControls = value; await this.plugin.saveSettings(); this.updateControls() }));
 
-		new Setting(container)
-			.setName('Keyboard move speed')
-			.setClass('vertical-setting')
-			.addSlider(s => s.setLimits(0.1, 10, 0.1).setValue(this.settings.keyboardMoveSpeed).setDynamicTooltip()
-				.onChange(async (v) => { this.settings.keyboardMoveSpeed = v; await this.plugin.saveSettings(); }));
+	// 	new Setting(container)intera
+	// 		.setName('Keyboard move speed')
+	// 		.setClass('vertical-setting')
+	// 		.addSlider(s => s.setLimits(0.1, 10, 0.1).setValue(this.settings.keyboardMoveSpeed).setDynamicTooltip()
+	// 			.onChange(async (v) => { this.settings.keyboardMoveSpeed = v; await this.plugin.saveSettings(); }));
 
-		new Setting(container).setName("Zoom on click")
-			.addToggle(toggle => toggle.setValue(this.settings.zoomOnClick)
-				.onChange(async (value) => {
-					this.settings.zoomOnClick = value;
-					await this.plugin.saveSettings();
-				}));
+	// 	new Setting(container).setName("Zoom on click")
+	// 		.addToggle(toggle => toggle.setValue(this.settings.zoomOnClick)
+	// 			.onChange(async (value) => {
+	// 				this.settings.zoomOnClick = value;
+	// 				await this.plugin.saveSettings();
+	// 			}));
 
-		new Setting(container)
-			.setName('Rotation speed')
-			.setClass('vertical-setting')
-			.addSlider(s => s.setLimits(0.1, 5, 0.1).setValue(this.settings.rotateSpeed).setDynamicTooltip()
-				.onChange(async (v) => {
-					this.settings.rotateSpeed = v;
-					await this.plugin.saveSettings();
-					this.updateControls();
-				}));
+	// 	new Setting(container)
+	// 		.setName('Rotation speed')
+	// 		.setClass('vertical-setting')
+	// 		.addSlider(s => s.setLimits(0.1, 5, 0.1).setValue(this.settings.rotateSpeed).setDynamicTooltip()
+	// 			.onChange(async (v) => {
+	// 				this.settings.rotateSpeed = v;
+	// 				await this.plugin.saveSettings();
+	// 				this.updateControls();
+	// 			}));
 
-		new Setting(container)
-			.setName('Pan speed')
-			.setClass('vertical-setting')
-			.addSlider(s => s.setLimits(0.1, 5, 0.1).setValue(this.settings.panSpeed).setDynamicTooltip()
-				.onChange(async (v) => {
-					this.settings.panSpeed = v;
-					await this.plugin.saveSettings();
-				this.updateControls();
-			}));
+	// 	new Setting(container)
+	// 		.setName('Pan speed')
+	// 		.setClass('vertical-setting')
+	// 		.addSlider(s => s.setLimits(0.1, 5, 0.1).setValue(this.settings.panSpeed).setDynamicTooltip()
+	// 			.onChange(async (v) => {
+	// 				this.settings.panSpeed = v;
+	// 				await this.plugin.saveSettings();
+	// 			this.updateControls();
+	// 		}));
 
-		new Setting(container)
-			.setName('Zoom speed')
-			.setClass('vertical-setting')
-			.addSlider(s => s.setLimits(0.1, 5, 0.1).setValue(this.settings.zoomSpeed).setDynamicTooltip()
-				.onChange(async (v) => {
-					this.settings.zoomSpeed = v;
-					await this.plugin.saveSettings();
-					this.updateControls();
-				}));
-	}
+	// 	new Setting(container)
+	// 		.setName('Zoom speed')
+	// 		.setClass('vertical-setting')
+	// 		.addSlider(s => s.setLimits(0.1, 5, 0.1).setValue(this.settings.zoomSpeed).setDynamicTooltip()
+	// 			.onChange(async (v) => {
+	// 				this.settings.zoomSpeed = v;
+	// 				await this.plugin.saveSettings();
+	// 				this.updateControls();
+	// 			}));
+	// }
 
 	private renderForceSettings(container: HTMLElement) {
 
@@ -853,8 +853,8 @@ export class Graph3DView extends ItemView {
 		// These are now updated dynamically without a full redraw
 		this.graph
 			.linkWidth((link: GraphLink) => this.highlightedLinks.has(link) ? (this.settings.linkThickness * 2) : this.settings.linkThickness)
-			.linkDirectionalParticles((link: GraphLink) => this.highlightedLinks.has(link) ? 4 : 0)
-			.linkDirectionalParticleWidth(2);
+			//.linkDirectionalParticles((link: GraphLink) => this.highlightedLinks.has(link) ? 4 : 0)
+			//.linkDirectionalParticleWidth(2);
 	}
 
 	private hexToRgba(hex: string, alpha: number): string {
@@ -1062,7 +1062,7 @@ export class Graph3DView extends ItemView {
 			}
 
 			if (node.type !== NodeType.Folder && node.__threeObj && this.settings.zoomOnClick) {
-				const distance = 40;
+				const distance = 150;
 				const nodePosition = new THREE.Vector3();
 				node.__threeObj.getWorldPosition(nodePosition);
 				const cameraPosition = this.graph.camera().position;
